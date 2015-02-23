@@ -1,0 +1,1 @@
+{"menu":[{"label":"Packages","submenu":[{"label":"pomodoro","submenu":[{"label":"start","command":"pomodoro:start"},{"label":"abort","command":"pomodoro:abort"}]}]}]}

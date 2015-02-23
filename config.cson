@@ -28,3 +28,7 @@
   "autocomplete-plus": {}
   "go-plus": {}
   emmet: {}
+  "todo-show":
+    ignoreThesePaths: [
+      "Godeps"
+    ]

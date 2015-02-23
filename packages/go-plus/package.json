@@ -57,8 +57,8 @@
   "readmeFilename": "README.md",
   "_id": "go-plus@3.2.2",
   "_shasum": "f10893c67e0c15905db60d0f174ad4f0a643e647",
-  "_resolved": "file:../d-115121-58810-12qarnb/package.tgz",
-  "_from": "../d-115121-58810-12qarnb/package.tgz",
+  "_resolved": "file:../d-115123-4353-sste22/package.tgz",
+  "_from": "../d-115123-4353-sste22/package.tgz",
   "_atomModuleCache": {
     "version": 1,
     "dependencies": [
