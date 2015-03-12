@@ -1,0 +1,1 @@
+{".text.html":{"ZURB Foundation 5 Sub Nav":{"prefix":"zfsubnav","body":"<dl class=\"sub-nav\">\n  <dt>Filter:</dt>\n  <dd class=\"active\"><a href=\"#\">All</a></dd>\n  <dd><a href=\"#\">Active</a></dd>\n  <dd><a href=\"#\">Pending</a></dd>\n  <dd><a href=\"#\">Suspended</a></dd>\n</dl>"}}}

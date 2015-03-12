@@ -1,0 +1,1 @@
+{".source.coffee .specs":{"Expect":{"prefix":"ex","body":"expect($1).to$2"},"Describe":{"prefix":"de","body":"describe \"${1:description}\", ->\n  ${2:body}"}}}

@@ -1,0 +1,1 @@
+{".text.html":{"ZURB Foundation 5 Progress Bar":{"prefix":"zfprobar","body":"<!-- Container Width Classes: [small-# large-#] -->\n<!-- Color Classes: [secondary alert success] -->\n<!-- Radius Classes: [radius round] -->\n<!-- Progress Width Classes: [1 - 100] -->\n<div class=\"progress\">\n  <span class=\"meter\" style=\"width: 100%\"></span>\n</div>"}}}

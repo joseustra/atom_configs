@@ -1,0 +1,1 @@
+{".text.html":{"ZURB Foundation 5 Clearing lightbox":{"prefix":"zfcle","body":"<ul class=\"clearing-thumbs\" data-clearing>\n  <li><a href=\"path/to/your/img\"><img src=\"path/to/your/img-th\"></a></li>\n  <li><a href=\"path/to/your/img\"><img src=\"path/to/your/img-th\"></a></li>\n  <li><a href=\"path/to/your/img\"><img src=\"path/to/your/img-th\"></a></li>\n</ul>"}}}

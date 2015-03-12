@@ -1,0 +1,1 @@
+{".text.html":{"ZURB Foundation 5 Side Nav":{"prefix":"zfsidnav","body":"<ul class=\"side-nav\">\n  <li class=\"active\"><a href=\"#\">Link 1</a></li>\n  <li><a href=\"#\">Link 2</a></li>\n  <li class=\"divider\"></li>\n  <li><a href=\"#\">Link 3</a></li>\n  <li><a href=\"#\">Link 4</a></li>\n</ul>"}}}

@@ -1,0 +1,1 @@
+{".text.html":{"ZURB Foundation 5 Alerts":{"prefix":"zfale","body":"<!-- Optional classes: [success alert secondary] [radius round] -->\n<div data-alert class=\"alert-box\">\n  <!-- Your content goes here -->\n  <a href=\"#\" class=\"close\">&times;</a>\n</div>"}}}
