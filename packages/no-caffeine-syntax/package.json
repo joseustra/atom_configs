@@ -1,7 +1,7 @@
 {
   "name": "no-caffeine-syntax",
   "theme": "syntax",
-  "version": "0.9.0",
+  "version": "0.12.1",
   "private": true,
   "description": "A dark, crisp and clean Atom Editor syntax theme with no caffeine",
   "repository": {
@@ -18,10 +18,10 @@
     "url": "https://github.com/thomaslindstrom/no-caffeine-syntax/issues"
   },
   "homepage": "https://github.com/thomaslindstrom/no-caffeine-syntax",
-  "_id": "no-caffeine-syntax@0.9.0",
-  "_shasum": "47f47ad2c27b1e890949f73a43473d54dd1ac3f3",
-  "_resolved": "file:../d-115122-62183-15k7w3/package.tgz",
-  "_from": "../d-115122-62183-15k7w3/package.tgz",
+  "_id": "no-caffeine-syntax@0.12.1",
+  "_shasum": "397f887a80272ad7ac1610cd10e675ed4a64b0fc",
+  "_resolved": "file:../d-115327-3286-jdlemn/package.tgz",
+  "_from": "../d-115327-3286-jdlemn/package.tgz",
   "_atomModuleCache": {
     "version": 1,
     "dependencies": [],

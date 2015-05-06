@@ -15,8 +15,8 @@
     showIndentGuide: true
   core:
     themes: [
-      "one-dark-ui"
-      "no-caffeine-syntax"
+      "seti-ui"
+      "monokai"
     ]
     ignoredNames: [
       ".git"
@@ -34,6 +34,7 @@
   "go-plus":
     environmentOverridesConfiguration: false
     goPath: "/Users/ustrajunior/code/go"
+    goInstallation: "/usr/local/bin/go"
   emmet: {}
   "todo-show":
     ignoreThesePaths: [
@@ -42,3 +43,5 @@
   "atom-pair": {}
   pomodoro:
     playSounds: false
+  "highlight-line": {}
+  "git-plus": {}

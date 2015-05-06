@@ -1,17 +1,22 @@
 {CompositeDisposable, Disposable} = require 'atom'
-ScopedPropertyStore = require 'scoped-property-store'
 _ = require 'underscore-plus'
 semver = require 'semver'
+{Selector} = require 'selector-kit'
+stableSort = require 'stable'
+
+{selectorsMatchScopeChain} = require('./scope-helpers')
 
 # Deferred requires
 SymbolProvider = null
 FuzzyProvider =  null
 grim = null
+ProviderMetadata = null
 
 module.exports =
 class ProviderManager
-  fuzzyProvider: null
-  fuzzyRegistration: null
+  defaultProvider: null
+  defaultProviderRegistration: null
+  providers: null
   store: null
   subscriptions: null
   globalBlacklist: null
@@ -19,83 +24,67 @@ class ProviderManager
   constructor: ->
     @subscriptions = new CompositeDisposable
     @globalBlacklist = new CompositeDisposable
-    @providers = new Map
-    @store = new ScopedPropertyStore
-    @subscriptions.add(atom.config.observe('autocomplete-plus.enableBuiltinProvider', (value) => @toggleFuzzyProvider(value)))
+    @subscriptions.add(@globalBlacklist)
+    @providers = []
+    @subscriptions.add(atom.config.observe('autocomplete-plus.enableBuiltinProvider', (value) => @toggleDefaultProvider(value)))
     @subscriptions.add(atom.config.observe('autocomplete-plus.scopeBlacklist', (value) => @setGlobalBlacklist(value)))
 
   dispose: ->
-    @toggleFuzzyProvider(false)
-    @globalBlacklist?.dispose()
-    @globalBlacklist = null
-    @blacklist = null
+    @toggleDefaultProvider(false)
     @subscriptions?.dispose()
     @subscriptions = null
-    @store?.cache = {}
-    @store?.propertySets = []
-    @store = null
-    @providers?.clear()
+    @globalBlacklist = null
     @providers = null
 
   providersForScopeDescriptor: (scopeDescriptor) =>
-    scopeChain = scopeDescriptor?.getScopeChain?() or scopeDescriptor
-    return [] unless scopeChain? and @store?
-    return [] if _.contains(@blacklist, scopeChain) # Check Blacklist For Exact Match
+    scopeChain = scopeChainForScopeDescriptor(scopeDescriptor)
+    return [] unless scopeChain
+    return [] if @globalBlacklistSelectors? and selectorsMatchScopeChain(@globalBlacklistSelectors, scopeChain)
 
-    providers = @store.getAll(scopeChain)
-
-    # Check Global Blacklist For Match With Selector
-    blacklist = _.chain(providers).map((p) -> p.value.globalBlacklist).filter((p) -> p? and p is true).value()
-    return [] if blacklist? and blacklist.length
-
-    # Determine Blacklisted Providers
-    blacklistedProviders = _.chain(providers).filter((p) -> p.value.blacklisted? and p.value.blacklisted is true).map((p) -> p.value.provider).value()
-
-    # TODO API: Remove this when 1.0 API is removed
-    fuzzyProviderBlacklisted = _.chain(providers).filter((p) -> p.value.providerblacklisted? and p.value.providerblacklisted is 'autocomplete-plus-fuzzyprovider').map((p) -> p.value.provider).value() if @fuzzyProvider?
-
-    providers = _.chain(providers)
-      .sortBy((p) -> -p.scopeSelector.length) # Sort by a bad proxy for 'specificity'
-      .map((p) -> p.value.provider)
-      .uniq()
-      .difference(blacklistedProviders) # Exclude Blacklisted Providers
-      .value()
-    providers = _.without(providers, @fuzzyProvider) if fuzzyProviderBlacklisted? and fuzzyProviderBlacklisted.length and @fuzzyProvider?
-
+    matchingProviders = []
+    disableDefaultProvider = false
     lowestIncludedPriority = 0
-    for provider in providers
-      if provider.excludeLowerPriority?
-        lowestIncludedPriority = Math.max(lowestIncludedPriority, provider.inclusionPriority ? 0)
 
-    (provider for provider in providers when (provider.inclusionPriority ? 0) >= lowestIncludedPriority)
+    for providerMetadata in @providers
+      {provider} = providerMetadata
+      if providerMetadata.matchesScopeChain(scopeChain)
+        matchingProviders.push(provider)
+        if provider.excludeLowerPriority?
+          lowestIncludedPriority = Math.max(lowestIncludedPriority, provider.inclusionPriority ? 0)
+        if providerMetadata.shouldDisableDefaultProvider(scopeChain)
+          disableDefaultProvider = true
 
-  toggleFuzzyProvider: (enabled) =>
+    matchingProviders = _.without(matchingProviders, @defaultProvider) if disableDefaultProvider
+    matchingProviders = (provider for provider in matchingProviders when (provider.inclusionPriority ? 0) >= lowestIncludedPriority)
+    stableSort matchingProviders, (providerA, providerB) =>
+      specificityA = @metadataForProvider(providerA).getSpecificity(scopeChain)
+      specificityB = @metadataForProvider(providerB).getSpecificity(scopeChain)
+      difference = specificityB - specificityA
+      difference = (providerB.suggestionPriority ? 1) - (providerA.suggestionPriority ? 1) if difference is 0
+      difference
+
+  toggleDefaultProvider: (enabled) =>
     return unless enabled?
 
     if enabled
-      return if @fuzzyProvider? or @fuzzyRegistration?
+      return if @defaultProvider? or @defaultProviderRegistration?
       if atom.config.get('autocomplete-plus.defaultProvider') is 'Symbol'
         SymbolProvider ?= require('./symbol-provider')
-        @fuzzyProvider = new SymbolProvider()
+        @defaultProvider = new SymbolProvider()
       else
         FuzzyProvider ?= require('./fuzzy-provider')
-        @fuzzyProvider = new FuzzyProvider()
-      @fuzzyRegistration = @registerProvider(@fuzzyProvider)
+        @defaultProvider = new FuzzyProvider()
+      @defaultProviderRegistration = @registerProvider(@defaultProvider)
     else
-      @fuzzyRegistration.dispose() if @fuzzyRegistration?
-      @fuzzyProvider.dispose() if @fuzzyProvider?
-      @fuzzyRegistration = null
-      @fuzzyProvider = null
+      @defaultProviderRegistration?.dispose()
+      @defaultProvider?.dispose()
+      @defaultProviderRegistration = null
+      @defaultProvider = null
 
-  setGlobalBlacklist: (@blacklist) =>
-    @globalBlacklist.dispose() if @globalBlacklist?
-    @globalBlacklist = new CompositeDisposable
-    @blacklist = [] unless @blacklist?
-    return unless @blacklist.length
-    properties = {}
-    properties[blacklist.join(',')] = {globalBlacklist: true}
-    registration = @store.addProperties('globalblacklist', properties)
-    @globalBlacklist.add(registration)
+  setGlobalBlacklist: (globalBlacklist) =>
+    @globalBlacklistSelectors = null
+    if globalBlacklist?.length
+      @globalBlacklistSelectors = Selector.create(globalBlacklist)
 
   isValidProvider: (provider, apiVersion) ->
     # TODO API: Check based on the apiVersion
@@ -104,19 +93,29 @@ class ProviderManager
     else
       provider? and _.isFunction(provider.requestHandler) and _.isString(provider.selector) and !!provider.selector.length
 
+  metadataForProvider: (provider) =>
+    for providerMetadata in @providers
+      return providerMetadata if providerMetadata.provider is provider
+    null
+
   apiVersionForProvider: (provider) =>
-    @providers.get(provider)
+    @metadataForProvider(provider)?.apiVersion
 
   isProviderRegistered: (provider) ->
-    @providers.has(provider)
+    @metadataForProvider(provider)?
 
   addProvider: (provider, apiVersion='2.0.0') =>
     return if @isProviderRegistered(provider)
-    @providers.set(provider, apiVersion)
+    ProviderMetadata ?= require './provider-metadata'
+    @providers.push new ProviderMetadata(provider, apiVersion)
     @subscriptions.add(provider) if provider.dispose?
 
   removeProvider: (provider) =>
-    @providers?.delete(provider)
+    return unless @providers
+    for providerMetadata, i in @providers
+      if providerMetadata.provider is provider
+        @providers.splice(i, 1)
+        break
     @subscriptions?.remove(provider) if provider.dispose?
 
   registerProvider: (provider, apiVersion='2.0.0') =>
@@ -125,7 +124,7 @@ class ProviderManager
     apiIs20 = semver.satisfies(apiVersion, '>=2.0.0')
 
     if apiIs20
-      if provider.id? and provider isnt @fuzzyProvider
+      if provider.id? and provider isnt @defaultProvider
         grim ?= require 'grim'
         grim.deprecate """
           Autocomplete provider '#{provider.constructor.name}(#{provider.id})'
@@ -150,42 +149,15 @@ class ProviderManager
           See https://github.com/atom-community/autocomplete-plus/wiki/Provider-API
         """
 
-    return unless @isValidProvider(provider, apiVersion)
-    return if @isProviderRegistered(provider)
+    unless @isValidProvider(provider, apiVersion)
+      console.warn "Provider #{provider.constructor.name} is not valid", provider
+      return
 
-    # TODO API: Deprecate the 1.0 APIs
-    selector = provider.selector
-    disabledSelector = provider.disableForSelector
-    disabledSelector = provider.blacklist unless apiIs20
+    return if @isProviderRegistered(provider)
 
     @addProvider(provider, apiVersion)
 
-    properties = {}
-    properties[selector] = {provider}
-    registration = @store.addProperties(null, properties)
-
-    # Register Provider's Blacklist (If Present)
-    blacklistRegistration = null
-    if disabledSelector?.length
-      blacklistproperties = {}
-      blacklistproperties[disabledSelector] = {provider, blacklisted: true}
-      blacklistRegistration = @store.addProperties(null, blacklistproperties)
-
-    # TODO API: Remove providerblacklist stuff when 1.0 API is removed
-    providerblacklistRegistration = null
-    if provider.providerblacklist?['autocomplete-plus-fuzzyprovider']?.length
-      providerblacklist = provider.providerblacklist['autocomplete-plus-fuzzyprovider']
-      if providerblacklist.length
-        providerblacklistproperties = {}
-        providerblacklistproperties[providerblacklist] = {provider, providerblacklisted: 'autocomplete-plus-fuzzyprovider'}
-        providerblacklistRegistration = @store.addProperties(null, providerblacklistproperties)
-
     disposable = new Disposable =>
-      # TODO API: Remove this when 1.0 API is removed
-      providerblacklistRegistation?.dispose()
-
-      registration?.dispose()
-      blacklistRegistration?.dispose()
       @removeProvider(provider)
 
     # When the provider is disposed, remove its registration
@@ -195,3 +167,20 @@ class ProviderManager
         disposable.dispose()
 
     disposable
+
+scopeChainForScopeDescriptor = (scopeDescriptor) ->
+  # TODO: most of this is temp code to understand #308
+  type = typeof scopeDescriptor
+  if type is 'string'
+    scopeDescriptor
+  else if type is 'object' and scopeDescriptor?.getScopeChain?
+    scopeChain = scopeDescriptor.getScopeChain()
+    if scopeChain? and not scopeChain.replace?
+      json = JSON.stringify(scopeDescriptor)
+      console.log scopeDescriptor, json
+      throw new Error("01: ScopeChain is not correct type: #{type}; #{json}")
+    scopeChain
+  else
+    json = JSON.stringify(scopeDescriptor)
+    console.log scopeDescriptor, json
+    throw new Error("02: ScopeChain is not correct type: #{type}; #{json}")

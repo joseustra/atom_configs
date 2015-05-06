@@ -37,6 +37,7 @@ describe 'Autocomplete Manager', ->
 
       runs ->
         autocompleteManager = mainModule.autocompleteManager
+        advanceClock(autocompleteManager.providerManager.defaultProvider.deferBuildWordListInterval)
 
     it 'restores the previous state', ->
 
